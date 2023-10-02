@@ -35,27 +35,29 @@ class MyWebServer(socketserver.BaseRequestHandler):
         reqInfo = self.data.decode().split()
         #print(reqInfo)
         reqType = reqInfo[0] #should be GET
-        print(reqType)
+        #print(reqType)
         reqPath = reqInfo[1]
-        print(reqPath)
+        #print(reqPath)
         if (reqType != "GET"):
             self.handle405()
             return
         else:
             fullPath = os.path.abspath("www") + reqPath
-            if reqPath.find("..") != -1:
+            if reqPath.find("..") != -1: #if trying to go back, 404
                 self.handle404()
                 return
-            if not os.path.exists(fullPath):
+            if not os.path.exists(fullPath): #if path doesn't exist, 404
                 self.handle404()
                 return
             if os.path.isfile(fullPath):
                 fileType = reqPath.split(".")[1]
+                #print(fileType)
             else:
                 fileType = "dir"
             if fileType == "dir":
                 if reqPath[-1] == "/":
                     fullPath += "index.html"
+                    #print(fullPath)
                     self.html("HTTP/1.1 ", fullPath, "200 OK")
                 else:
                     path += "/"
