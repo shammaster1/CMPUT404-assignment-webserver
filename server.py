@@ -1,5 +1,5 @@
 #  coding: utf-8 
-import socketserver
+import socketserver, os
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -32,7 +32,62 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        reqInfo = self.data.decode().split()
+        #print(reqInfo)
+        reqType = reqInfo[0] #should be GET
+        print(reqType)
+        reqPath = reqInfo[1]
+        print(reqPath)
+        if (reqType != "GET"):
+            self.handle405()
+            return
+        else:
+            fullPath = os.path.abspath("www") + reqPath
+            if reqPath.find("..") != -1:
+                self.handle404()
+                return
+            if not os.path.exists(fullPath):
+                self.handle404()
+                return
+            if os.path.isfile(fullPath):
+                fileType = reqPath.split(".")[1]
+            else:
+                fileType = "dir"
+            if fileType == "dir":
+                if reqPath[-1] == "/":
+                    fullPath += "index.html"
+                    self.html("HTTP/1.1 ", fullPath, "200 OK")
+                else:
+                    path += "/"
+                    sendData = "HTTP/1.1 301 Moved Permanently\r\nLocation:http://127.0.0.1:8080" + reqPath + "\r\n\r\n"
+                    self.request.sendall(sendData.encode())
+            elif fileType == "html":
+                self.html("HTTP/1.1 ", fullPath, "200 OK")
+            elif fileType == "css":
+                self.css("HTTP/1.1 ", fullPath, "200 OK")
+            else:
+                print("Unsupported File Type")
+            
+
+    def handle405(self): # handle error 405
+        self.request.sendall(bytearray("HTTP/1.1 405 Method Not Allowed\r\n\r\n405 Method Not Allowed", "utf-8"))
+        return
+    
+    def handle404(self): # handle error 404
+        self.request.sendall(bytearray("HTTP/1.1 404 Not Found\r\n\r\n404 Method Not Allowed", "utf-8"))
+        return
+    
+    def html(self, header, path, status):
+        file = open(path)
+        data = file.read()
+        sendData = header + status + "\r\nContent-Type: text/html\r\n\r\n" + data
+        self.request.sendall(sendData.encode())
+    
+    def css(self, header, path, status):
+        file = open(path)
+        data = file.read()
+        sendData = header + status + "\r\nContent-Type: text/css\r\n\r\n" + data
+        self.request.sendall(sendData.encode())
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
